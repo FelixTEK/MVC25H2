@@ -27,10 +27,9 @@ $controller = new JobController();
 
 switch ($action) {
     case 'apply':
-        // เอา die() และ if() ออกได้เลย เพราะยามหน้าประตูจัดการให้แล้ว
-        $job_id = isset($_GET['job_id']) ? $_GET['job_id'] : die('ERROR: Job ID not found.');
-
-        // ส่งข้อมูลต่อไปให้ Controller ทำงานตามปกติ
+        // เปลี่ยนจาก $_GET เป็น $_POST แค่นี้เลยครับ!
+        $job_id = isset($_POST['job_id']) ? $_POST['job_id'] : die('ERROR: Job ID not found.');
+        
         $controller->applyForJob($job_id, $_SESSION['candidate_id']);
         break;
 

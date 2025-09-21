@@ -35,14 +35,31 @@ class Application {
         $insert_query = "INSERT INTO applications (job_id, candidate_id, application_date) VALUES (:job_id, :candidate_id, NOW())";
         $stmt = $this->conn->prepare($insert_query);
 
-        // bind values
         $stmt->bindParam(':job_id', $job_id);
         $stmt->bindParam(':candidate_id', $candidate_id);
 
+        // ถ้าบันทึกข้อมูลสำเร็จ
         if ($stmt->execute()) {
-            return true;
+            // ให้ดึงข้อมูลงานที่เพิ่งสมัครเพื่อนำไปสร้างข้อความยืนยัน
+            $query = "SELECT j.title, c.name AS company_name
+                    FROM jobs j
+                    JOIN companies c ON j.company_id = c.company_id
+                    WHERE j.job_id = :job_id";
+
+            $details_stmt = $this->conn->prepare($query);
+            $details_stmt->bindParam(':job_id', $job_id);
+            $details_stmt->execute();
+            $details = $details_stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // เพิ่มเวลาที่สมัครเข้าไปในผลลัพธ์
+            $details['application_date'] = date('Y-m-d H:i:s');
+
+            // คืนค่าเป็น array ของรายละเอียดงาน
+            return $details;
         }
-        return "Error: " . $stmt->errorInfo();
+
+        // ถ้าไม่สำเร็จ ให้คืนค่า Error
+        return "Database Error: " . implode(" - ", $stmt->errorInfo());
     }
 }
 ?>

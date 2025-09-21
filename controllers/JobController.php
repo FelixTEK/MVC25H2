@@ -7,11 +7,19 @@ class JobController {
     public function listJobs() {
         $database = new Database();
         $db = $database->getConnection();
-
         $job = new Job($db);
-        $stmt = $job->getOpenJobs();
-        
-        // ส่งข้อมูล $stmt ไปให้ View
+
+        // ========== เพิ่ม 1 บรรทัดนี้เข้าไป ==========
+        // สั่งให้ระบบทำความสะอาดข้อมูลก่อนดึงไปแสดงผลเสมอ
+        $job->updateExpiredJobsStatus();
+        // ========================================
+
+        // รับค่า sort จาก URL, ถ้าไม่มีใช้ค่า default
+        $sortBy = isset($_GET['sort']) ? $_GET['sort'] : 'deadline';
+
+        // เรียกใช้ฟังก์ชันที่แก้ไขแล้ว
+        $stmt = $job->getOpenJobs($sortBy);
+
         require_once 'views/jobs_list.php';
     }
 
@@ -22,19 +30,31 @@ class JobController {
         $application = new Application($db);
         $result = $application->create($job_id, $candidate_id);
 
-        // ================== เพิ่มโค้ดบรรทัดนี้เพื่อ DEBUG ==================
-        var_dump($result); 
-        die(" --- End of Debug --- ");
-        // ===============================================================
+        // ตรวจสอบว่าผลลัพธ์ที่ได้เป็น array (สมัครสำเร็จ) หรือไม่
+        if (is_array($result)) {
+            // ดึงค่าจาก array มาสร้างข้อความ
+            $jobTitle = htmlspecialchars($result['title']);
+            $companyName = htmlspecialchars($result['company_name']);
+            $dateTime = date('d/m/Y เวลา H:i น.', strtotime($result['application_date']));
 
+            // สร้างข้อความที่เป็นทางการ
+            $message = "การสมัครงานเสร็จสมบูรณ์: ท่านได้สมัครงานตำแหน่ง '{$jobTitle}' ที่บริษัท {$companyName} เมื่อ {$dateTime}";
 
-        if ($result === true) {
-            // Business Rule: เมื่อสมัครเสร็จ ต้องกลับไปหน้าตำแหน่งงาน
-            echo "<script>alert('สมัครงานสำเร็จ!'); window.location.href='index.php';</script>";
+            // เก็บข้อความลง Session เพื่อให้ View นำไปแสดงผล
+            $_SESSION['message'] = $message;
+            $_SESSION['message_type'] = "success"; // "success" คือ class ใน CSS สำหรับสีเขียว
         } else {
-            // แสดงข้อผิดพลาด
-            echo "<script>alert('{$result}'); window.history.back();</script>";
+            // ถ้าผลลัพธ์ไม่ใช่ array แปลว่าเป็น Error
+            $_SESSION['message'] = $result;
+            $_SESSION['message_type'] = "error"; // "error" คือ class สำหรับสีแดง
         }
+
+        // ส่งผู้ใช้กลับไปที่หน้าแรก
+        header("Location: index.php"); // คอมเมนต์บรรทัดนี้ไว้ชั่วคราว
+        exit(); // คอมเมนต์บรรทัดนี้ไว้ชั่วคราว
+
+        // เพิ่มบรรทัดนี้เพื่อ Debug
+        //die("DEBUG: ข้อความที่จะแสดงคือ -> " . $_SESSION['message']);
     }
 }
 ?>
